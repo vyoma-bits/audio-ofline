@@ -36,7 +36,7 @@ window.addEventListener('appinstalled', (evt) => {
     document.getElementById('installPrompt').style.display = 'none';
 });
 
-// Audio Stream Host Class - Enhanced for PWA
+// Audio Stream Host Class
 class AudioStreamHost {
     constructor() {
         this.peerConnections = new Map();
@@ -214,7 +214,7 @@ class AudioStreamHost {
     }
 }
 
-// Audio Stream Client Class - Enhanced for PWA  
+// Audio Stream Client Class
 class AudioStreamClient {
     constructor() {
         this.peerConnection = null;
@@ -311,7 +311,7 @@ class AudioStreamClient {
                 `🔄 Reconnecting... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`;
             
             setTimeout(() => {
-                this.joinGroup(connectionId);
+                this.joinGroup();
             }, 2000);
         } else {
             document.getElementById('status').innerHTML = 
@@ -330,32 +330,26 @@ class AudioStreamClient {
     }
 }
 
-// Network connection checker with PWA enhancements
+// FIXED: Simplified network connection checker
 async function checkNetworkConnection() {
+    // Simple check: just verify browser thinks we're online
     if (!navigator.onLine) {
         return false;
     }
     
+    // Additional check: if we can access localStorage, assume we're connected
     try {
-        // Try common hotspot gateway IPs
-        const testIPs = ['192.168.43.1', '192.168.1.1', '192.168.0.1', '10.0.0.1'];
-        
-        for (let ip of testIPs) {
-            try {
-                const response = await fetch(`http://${ip}`, { 
-                    method: 'HEAD',
-                    timeout: 3000,
-                    mode: 'no-cors'
-                });
-                return true;
-            } catch (e) {
-                continue;
-            }
-        }
-        return false;
-    } catch (error) {
+        localStorage.setItem('connectivity-test', 'test');
+        localStorage.removeItem('connectivity-test');
+        return true;
+    } catch (e) {
         return false;
     }
+}
+
+// Alternative: Even simpler check that always passes if browser is online
+function checkNetworkConnectionSimple() {
+    return navigator.onLine;
 }
 
 // Initialize PWA and app when page loads
@@ -367,18 +361,17 @@ document.addEventListener('DOMContentLoaded', () => {
         Notification.requestPermission();
     }
 
-    // Check network status periodically
-    setInterval(async () => {
-        const isConnected = await checkNetworkConnection();
+    // FIXED: Simplified network status check
+    setInterval(() => {
         const networkStatus = document.getElementById('networkStatus');
         
-        if (isConnected) {
+        if (navigator.onLine) {
             networkStatus.className = 'network-status connected';
             networkStatus.innerHTML = '📶 WiFi Connected - Ready to join';
             document.getElementById('joinGroup').disabled = false;
         } else {
             networkStatus.className = 'network-status disconnected';
-            networkStatus.innerHTML = '❌ Connect to host\'s WiFi hotspot first';
+            networkStatus.innerHTML = '❌ Check your WiFi connection';
             document.getElementById('joinGroup').disabled = true;
         }
     }, 3000);
@@ -389,12 +382,12 @@ document.addEventListener('DOMContentLoaded', () => {
         audioApp.startAsHost();
     });
 
-    document.getElementById('joinGroup').addEventListener('click', async () => {
-        const isConnected = await checkNetworkConnection();
-        
-        if (!isConnected) {
+    // FIXED: Removed complex network check
+    document.getElementById('joinGroup').addEventListener('click', () => {
+        // Simple check: only verify browser is online
+        if (!navigator.onLine) {
             document.getElementById('status').innerHTML = 
-                '⚠️ Please connect to host\'s WiFi hotspot first!';
+                '⚠️ You appear to be offline. Connect to host\'s WiFi first!';
             return;
         }
         
@@ -428,12 +421,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle online/offline events
     window.addEventListener('online', () => {
         console.log('PWA: Back online');
-        document.getElementById('networkStatus').innerHTML = '🔄 Connection restored';
+        const networkStatus = document.getElementById('networkStatus');
+        networkStatus.className = 'network-status connected';
+        networkStatus.innerHTML = '🔄 Connection restored';
     });
 
     window.addEventListener('offline', () => {
         console.log('PWA: Gone offline');
-        document.getElementById('networkStatus').innerHTML = '⚠️ Working offline';
+        const networkStatus = document.getElementById('networkStatus');
+        networkStatus.className = 'network-status disconnected';
+        networkStatus.innerHTML = '⚠️ Working offline';
     });
 });
 
@@ -463,27 +460,3 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
-// Temporary: Force show install button for testing
-document.addEventListener('DOMContentLoaded', () => {
-    // Show install prompt immediately for testing
-    const installPrompt = document.getElementById('installPrompt');
-    const installButton = document.getElementById('installButton');
-    
-    // Force show the install prompt
-    installPrompt.classList.add('show');
-    
-    installButton.addEventListener('click', () => {
-        // For testing - show manual instructions
-        alert(`To install manually:
-        
-Android Chrome:
-1. Tap menu (⋮) → "Add to Home screen"
-
-iOS Safari: 
-1. Tap share button → "Add to Home Screen"
-
-Desktop Chrome:
-1. Click address bar install icon
-2. Or Settings → Install App`);
-    });
-});
